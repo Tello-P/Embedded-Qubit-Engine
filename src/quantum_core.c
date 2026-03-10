@@ -1,39 +1,66 @@
 #include "quantum_core.h"
 
+
+uint64_t rng_state = 0x853c49e6748fea9bULL;//Initial seed for random
+
+// xorshift* 64-bit for random
+static inline uint64_t rotl(const uint64_t x, int k) {
+  return (x << k) | (x >> (64 - k));
+}
+static uint64_t next_random_u64(void) {
+  uint64_t z = (rng_state += 0x9e3779b97f4a7c15ULL);
+  z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+  z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+  return z ^ (z >> 31);
+}
+#define Q14_MAX 16384
+int16_t random_q14(void) {
+  uint64_t r = next_random_u64();
+  
+   
+  uint32_t val = ((uint32_t)(r >> 48) * (uint32_t)Q14_MAX) >> 16;
+  return (int16_t) val;
+}
+
 void apply_gate_x(qubit_t *q){
   complex_q14_t temp = q->alpha;
   q->alpha = q->beta;
   q->beta  = temp;
 }
 
-static int16_t saturate_q14(int32_t val)
-{
-  if (val > 16383)  return 16383;
-  if (val < -16384) return -16384;
-  return (int16_t)val;
-}
 
 void apply_gate_h(qubit_t *q){
-  complex_q14_t a = q->alpha;
-  complex_q14_t b = q->beta;
+  int32_t ar = q->alpha.real;
+  int32_t br = q->beta.real;
+  int32_t ai = q->alpha.imag;
+  int32_t bi = q->beta.imag;
 
-  const int16_t s = Q14_INV_SQRT2;// 11585 = 0.7071
+  const int16_t s = Q14_INV_SQRT2;
 
-  int32_t sum_r = (int32_t)a.real + b.real;
-  int32_t sum_i = (int32_t)a.imag + b.imag;
+  // a_new = (a + b) / sqrt(2)
+  q->alpha.real = (int16_t)(((ar + br) * s + Q14_HALF) >> 14);
+  q->alpha.imag = (int16_t)(((ai + bi) * s + Q14_HALF) >> 14);
 
-  //overflow check, this could be removed if needed
-  q->alpha.real = saturate_q14(fp_mul(s, (int16_t)(sum_r >> 1)) +
-                               fp_mul(s, (int16_t)(sum_r & 1 ? 1 : 0)));
-  q->alpha.imag = saturate_q14(fp_mul(s, (int16_t)(sum_i >> 1)) +
-                               fp_mul(s, (int16_t)(sum_i & 1 ? 1 : 0)));
+  // b_new = (a - b) / sqrt(2)
+  q->beta.real = (int16_t)(((ar - br) * s + Q14_HALF) >> 14);
+  q->beta.imag = (int16_t)(((ai - bi) * s + Q14_HALF) >> 14);
+}
 
-  int32_t diff_r = (int32_t)a.real - b.real;
-  int32_t diff_i = (int32_t)a.imag - b.imag;
+int measure(qubit_t *q){
+  int16_t alpha_sq = complex_mag_sq(q->alpha);
+  int16_t random = random_q14();
 
-  //overflow check, this could be removed if needed
-  q->beta.real = saturate_q14(fp_mul(s, (int16_t)(diff_r >> 1)) +
-                              fp_mul(s, (int16_t)(diff_r & 1 ? (diff_r > 0 ? 1 : -1) : 0)));
-  q->beta.imag = saturate_q14(fp_mul(s, (int16_t)(diff_i >> 1)) +
-                              fp_mul(s, (int16_t)(diff_i & 1 ? (diff_i > 0 ? 1 : -1) : 0)));
+  if(random<alpha_sq){
+    q->alpha.real = Q14_ONE;
+    q->alpha.imag = 0;
+    q->beta.real  = 0;
+    q->beta.imag  = 0;
+    return 0;
+  }else{
+    q->alpha.real = 0;
+    q->alpha.imag = 0;
+    q->beta.real  = Q14_ONE;
+    q->beta.imag  = 0;
+    return 1;
+  }
 }
