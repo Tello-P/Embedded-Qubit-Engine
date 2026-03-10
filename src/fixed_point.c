@@ -15,3 +15,9 @@ complex_q14_t complex_mul(complex_q14_t a, complex_q14_t b) {
     res.imag = fp_mul(a.real, b.imag) + fp_mul(a.imag, b.real);
     return res;
 }
+
+int16_t complex_mag_sq(complex_q14_t a) {
+    int32_t r2 = (int32_t)a.real * a.real;
+    int32_t i2 = (int32_t)a.imag * a.imag;
+    return (int16_t)((r2 + i2) >> 14);
+}
