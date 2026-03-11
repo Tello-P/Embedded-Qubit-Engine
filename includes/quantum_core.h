@@ -2,6 +2,10 @@
 #define QUANTUM_CORE_H
 
 #include "fixed_point.h"
+#include <stdint.h>
+
+extern uint64_t rng_state;
+
 
 typedef struct {
      complex_q14_t alpha;

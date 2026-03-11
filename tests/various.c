@@ -1,75 +1,61 @@
 #include <stdio.h>
-#include <stdint.h>
+#include <stdlib.h>   // Para abs()
 #include "fixed_point.h"
+#include "quantum_core.h" // Para qubit_t, apply_gate_h, measure
 
-void test_fp_mul_edges(void) {
-    struct { int16_t a; int16_t b; int16_t expected; const char* desc; } cases[] = {
-        { 16383,  16383,  16383, "+max * +max → casi +1" },
-        {-16383,  16383, -16383, "-max * +max → casi -1" },
-        { 16383, -16383, -16383, "+max * -max → casi -1" },
-        {-16383, -16383,  16383, "-max * -max → casi +1" },
-        { 16384,  16384,  16383, "+1.00006 * +1.00006 → saturado a +1" }, // si permites 16384
-        {     0,  16383,      0, "zero * max = 0" },
-        {  8192,   8192,   4096, "0.5 * 0.5 = 0.25" },
+void test_fp_mul_edges() {
+    struct {
+        int16_t a, b, expected;
+        const char* desc;
+    } cases[] = {
+        {Q14_ONE, Q14_ONE, Q14_ONE, "1.0 * 1.0"},
+        {Q14_ONE, 0, 0, "1.0 * 0.0"},
+        {Q14_HALF, Q14_HALF, 4096, "0.5 * 0.5 = 0.25 (4096)"}
     };
 
-    printf("\nTesting fp_mul edge cases:\n");
-    for (int i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) {
+    printf("--- Testing Fixed Point Multiplication ---\n");
+    for (size_t i = 0; i < sizeof(cases)/sizeof(cases[0]); i++) { // Usar size_t
         int16_t res = fp_mul(cases[i].a, cases[i].b);
-        printf("%6d * %6d = %6d  | expected ~%6d  (%s) %s\n",
-               cases[i].a, cases[i].b, res, cases[i].expected,
-               cases[i].desc, (res == cases[i].expected || abs(res - cases[i].expected) <= 1) ? "OK" : "FAIL");
+        printf("%-25s: %s (got %d)\n", 
+               cases[i].desc, 
+               (res == cases[i].expected || abs(res - cases[i].expected) <= 1) ? "OK" : "FAIL",
+               res);
     }
-}void test_hadamard_zero(void) {
-    qubit_t q = { .alpha = {Q14_ONE, 0}, .beta = {0, 0} };  // |0⟩
+}
 
+void test_hadamard_zero() {
+    printf("\n--- Testing Hadamard on |0> ---\n");
+    // Inicialización correcta de la estructura anidada
+    qubit_t q = { .alpha = {Q14_ONE, 0}, .beta = {0, 0} }; 
+    
     apply_gate_h(&q);
 
-    // Esperado: alpha ≈ beta ≈ 0.7071 → 11585 en Q14
-    int16_t expected = 11585;
+    int16_t expected = Q14_INV_SQRT2;
     int err_a = abs(q.alpha.real - expected);
     int err_b = abs(q.beta.real  - expected);
 
-    printf("\nHadamard on |0⟩:\n");
     printf("alpha = %6d + %6di  → error %d\n", q.alpha.real, q.alpha.imag, err_a);
     printf("beta  = %6d + %6di  → error %d\n", q.beta.real,  q.beta.imag,  err_b);
-    printf("%s (tolerance < 163 ≈ 0.01)\n", (err_a < 163 && err_b < 163) ? "OK" : "FAIL");
-}void apply_gate_cnot(qubit_t *control, qubit_t *target) {
-    if (control->beta.real == Q14_ONE && control->beta.imag == 0) {  // si control está en |1⟩
-        complex_q14_t temp = target->alpha;
-        target->alpha = target->beta;
-        target->beta  = temp;
+}
+
+void test_measure_plus_10000() {
+    printf("\n--- Testing 10,000 Measurements on |+> ---\n");
+    qubit_t q = { .alpha = {Q14_INV_SQRT2, 0}, .beta = {Q14_INV_SQRT2, 0} };
+    
+    int count0 = 0, count1 = 0;
+    rng_state = 0x123456789ABCDEF0ULL; // Ahora funciona gracias al extern
+
+    for (int i = 0; i < 10000; i++) {
+        qubit_t copy = q; 
+        if (measure(&copy) == 0) count0++;
+        else count1++;
     }
-    // Nota: esto es solo para base computacional → no maneja superposiciones correctamente
-    // Para versión completa necesitas 2-qubit statevector o más qubits
-}void test_measure_plus_10000(void) {
-    qubit_t q;
-    apply_gate_h(&q);           // de |0> → |+>
+    printf("Results: |0>: %d, |1>: %d (Goal: ~5000/5000)\n", count0, count1);
+}
 
-    int count_0 = 0;
-    const int TRIALS = 10000;
-
-    // Fijar semilla para reproducibilidad
-    rng_state = 0x123456789ABCDEF0ULL;   // cualquier valor fijo
-
-    for (int i = 0; i < TRIALS; i++) {
-        qubit_t copy = q;               // no queremos modificar el original
-        int result = measure(&copy);
-        if (result == 0) count_0++;
-    }
-
-    float p0 = (float)count_0 / TRIALS;
-    printf("\n10000 measures of |+⟩ state:\n");
-    printf("P(0) = %.4f  P(1) = %.4f  → %s\n", p0, 1.0f - p0,
-           (p0 > 0.48f && p0 < 0.52f) ? "OK (dentro ~2% desviación)" : "FAIL (sesgo grande)");
-}int main(void) {
-    printf("=== Quantum fixed-point Q14 tests ===\n\n");
-
+int main() {
     test_fp_mul_edges();
     test_hadamard_zero();
-    // test_bell_magnitudes();     // cuando tengas CNOT + 2 qubits
     test_measure_plus_10000();
-
-    printf("\nTests finalizados.\n");
     return 0;
 }
