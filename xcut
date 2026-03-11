@@ -1,0 +1,63 @@
+./bin/test_math
+
+=== AVR-QUANTUM-CORE: SUITE DE PRUEBAS FASE 1 ===
+
+Multiplicacion Simple (0.5 * 0.5): [32mPASSED[0m
+Precision Hadamard (1/sqrt2^2): [32mPASSED[0m
+Multiplicacion Compleja (Rotacion i): [32mPASSED[0m
+Módulo al cuadrado (Normalización): [32mPASSED[0m
+
+================================================
+./bin/test_quantum
+=== STARTING TESTS FOR QUANTUM_CORE ===
+Test X Gate (NOT): PASSED
+Test H Gate (Superposition): PASSED
+Statistical Test (1000 measurements in superposition):
+ Result -> 0: 497, 1: 503
+ STATISTICAL: PASSED
+=========================================
+./bin/test_quantum_extra
+=== Q1.14 Quantum Core Validation Suite ===
+
+=== Normalization after Hadamard ===
+After H |0>    α =  11585 +      0i    β =  11585 +      0i
+Sum |α|² + |β|² = 16382 (expected ≈ 16384 ± 220)
+OK? yes
+After H |1>    α =  11585 +      0i    β = -11585 +      0i
+Sum |α|² + |β|² = 16382 (expected ≈ 16384 ± 220)
+
+=== Hadamard on |1> ===
+H|1>           α =  11585 +      0i    β = -11585 +      0i
+diff α=0  β=0  (tol=220)
+OK? yes
+
+=== Deterministic measurement ===
+|0> → 0 (expected 0)
+|1> → 1 (expected 1)
+repeat |0> → 0
+
+=== RNG reproducibility ===
+Sequences equal? YES
+
+=== Measurement statistics ===
+P(|0>) ≈ 0.508  (expected ≈ 0.5)
+
+=== Interference test H·H = I (IBM style) ===
+H(H|0>)        α =  16383 +      0i    β =      0 +      0i
+Return to |0>? diff=1  tol=220
+
+=== State collapse after measurement ===
+Collapsed state α =      0 +      0i    β =  16384 +      0i
+Result = 1
+Second measurement = 1 (must match)
+
+=== Negative imaginary phase stability ===
+before=16384 after=16382
+norm preserved? yes
+
+=== Hadamard numerical drift test ===
+After many H   α =  16382 +      0i    β =      0 +      0i
+Drift α=2  β=0  (tol=220)
+Stable? YES
+
+--- End tests ---
