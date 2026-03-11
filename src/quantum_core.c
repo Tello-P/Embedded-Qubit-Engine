@@ -46,6 +46,23 @@ void apply_gate_h(qubit_t *q){
   q->beta.imag = (int16_t)(((ai - bi) * s + Q14_HALF) >> 14);
 }
 
+void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target) {
+  uint16_t control_mask = (1u << control);
+  uint16_t target_mask = (1u << target);
+
+  for (uint16_t i = 0; i < reg->dim; i++) {
+    if ((i & control_mask) && !(i & target_mask)) {
+      uint16_t i0 = i;
+      uint16_t i1 = i | target_mask;
+
+      complex_q14_t temp = reg->state[i0];
+      reg->state[i0] = reg->state[i1];
+      reg->state[i1] = temp;
+    }
+  }
+}
+
+
 int measure(qubit_t *q){
   int16_t alpha_sq = complex_mag_sq(q->alpha);
   int16_t random = random_q14();
