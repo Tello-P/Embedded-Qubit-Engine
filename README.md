@@ -90,7 +90,7 @@ This project includes an **AVR assembly block** for the core fixed-point multipl
 # Build & run Bell state (entanglement) test
 make test_bell
 ```
-![Collape Bell Test](media/collapseBellTest.png)
+![Collape Bell Test](media/colapseBellTest.png)
 
 ```bash
 # Grover search with probability visualization
