@@ -21,29 +21,42 @@ int16_t random_q14(void) {
   uint32_t val = ((uint32_t)(r >> 48) * (uint32_t)Q14_MAX) >> 16;
   return (int16_t) val;
 }
+void apply_gate_x(quantum_register_t *reg, uint8_t target) {
+  uint16_t mask = (1u << target);
 
-void apply_gate_x(qubit_t *q){
-  complex_q14_t temp = q->alpha;
-  q->alpha = q->beta;
-  q->beta  = temp;
+  for (uint16_t i = 0; i < reg->dim; i++) {
+    if (!(i & mask)) {
+      uint16_t i0 = i;
+      uint16_t i1 = i | mask;
+
+      complex_q14_t temp = reg->state[i0];
+      reg->state[i0] = reg->state[i1];
+      reg->state[i1] = temp;
+    }
+  }
 }
 
-
-void apply_gate_h(qubit_t *q){
-  int32_t ar = q->alpha.real;
-  int32_t br = q->beta.real;
-  int32_t ai = q->alpha.imag;
-  int32_t bi = q->beta.imag;
-
+void apply_gate_h(quantum_register_t *reg, uint8_t target) {
+  uint16_t mask = (1u << target);
   const int16_t s = Q14_INV_SQRT2;
 
-  // a_new = (a + b) / sqrt(2)
-  q->alpha.real = (int16_t)(((ar + br) * s + Q14_HALF) >> 14);
-  q->alpha.imag = (int16_t)(((ai + bi) * s + Q14_HALF) >> 14);
+  for (uint16_t i = 0; i < reg->dim; i++) {
+    if (!(i & mask)) {
+      uint16_t i0 = i;
+      uint16_t i1 = i | mask;
 
-  // b_new = (a - b) / sqrt(2)
-  q->beta.real = (int16_t)(((ar - br) * s + Q14_HALF) >> 14);
-  q->beta.imag = (int16_t)(((ai - bi) * s + Q14_HALF) >> 14);
+      int32_t ar = reg->state[i0].real;
+      int32_t ai = reg->state[i0].imag;
+      int32_t br = reg->state[i1].real;
+      int32_t bi = reg->state[i1].imag;
+
+      reg->state[i0].real = (int16_t)(((ar + br) * s + Q14_HALF) >> 14);
+      reg->state[i0].imag = (int16_t)(((ai + bi) * s + Q14_HALF) >> 14);
+
+      reg->state[i1].real = (int16_t)(((ar - br) * s + Q14_HALF) >> 14);
+      reg->state[i1].imag = (int16_t)(((ai - bi) * s + Q14_HALF) >> 14);
+    }
+  }
 }
 
 void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target) {

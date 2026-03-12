@@ -13,8 +13,8 @@ typedef struct {
 } qubit_t;
 
 
-void apply_gate_x(qubit_t *q);
-void apply_gate_h(qubit_t *q);
+void apply_gate_x(quantum_register_t *reg, uint8_t target);
+void apply_gate_h(quantum_register_t *reg, uint8_t target);
 void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target);
 
 int measure(qubit_t *q);

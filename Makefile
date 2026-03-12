@@ -20,8 +20,9 @@ TARGET_QUANTUM_REGISTER  = $(BIN_DIR)/test_quantum_register
 TARGET_MULTIPLE_QUBITS   = $(BIN_DIR)/test_multiple_qubits
 TARGET_VARIOUS           = $(BIN_DIR)/various
 TARGET_GROVER = $(BIN_DIR)/test_grover
+TARGET_BELL_STATE = $(BIN_DIR)/test_bell_state
 
-all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER)
+all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER) $(TARGET_BELL_STATE)
 
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
@@ -50,6 +51,9 @@ $(TARGET_VARIOUS): $(FULL_OBJS) $(TEST_DIR)/various.c | $(BIN_DIR)
 $(TARGET_GROVER): $(FULL_OBJS) $(TEST_DIR)/test_grover.c | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_grover.c $(FULL_OBJS) -o $@
 
+$(TARGET_BELL_STATE): $(FULL_OBJS) $(TEST_DIR)/test_bell_state.c | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_bell_state.c $(FULL_OBJS) -o $@
+
 test_math: $(TARGET_MATH)
 	./$(TARGET_MATH)
 
@@ -70,6 +74,9 @@ test_various: $(TARGET_VARIOUS)
 
 test_grover: $(TARGET_GROVER)
 	./$(TARGET_GROVER) $(n)
+
+test_bell: $(TARGET_BELL_STATE)
+	./$(TARGET_BELL_STATE)
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
