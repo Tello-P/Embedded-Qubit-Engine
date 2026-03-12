@@ -94,3 +94,44 @@ int measure(qubit_t *q){
     return 1;
   }
 }
+
+
+int measure_qubit(quantum_register_t *reg, uint8_t target) {
+  uint16_t mask = (1u << target);
+  int32_t prob1_q14 = 0;
+
+  for (uint16_t i = 0; i < reg->dim; i++) {
+    if (i & mask) {
+      prob1_q14 += complex_mag_sq(reg->state[i]);
+    }
+  }
+
+  int16_t r = random_q14();
+  int result = (r < (int16_t)prob1_q14) ? 1 : 0;
+
+  int32_t sum_sq = 0;
+  for (uint16_t i = 0; i < reg->dim; i++) {
+    int bit = (i & mask) ? 1 : 0;
+    if (bit != result) {
+      reg->state[i].real = 0;
+      reg->state[i].imag = 0;
+    } else {
+      sum_sq += complex_mag_sq(reg->state[i]);
+    }
+  }
+
+  if (sum_sq > 0) {
+    for (uint16_t i = 0; i < reg->dim; i++) {
+      if (reg->state[i].real != 0 || reg->state[i].imag != 0) {
+        int32_t r_ext = (int32_t)reg->state[i].real << 14;
+        int32_t i_ext = (int32_t)reg->state[i].imag << 14;
+        int16_t root_sum = 11585; // Simplification
+        // 1/sqrt(sum_sq) is needed if i have != 90º logic gates
+        reg->state[i].real = (int16_t)(r_ext / root_sum);
+        reg->state[i].imag = (int16_t)(i_ext / root_sum);
+      }
+    }
+  }
+
+  return result;
+}
