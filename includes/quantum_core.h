@@ -13,6 +13,9 @@ typedef struct {
 } qubit_t;
 
 
+void apply_oracle(quantum_register_t *reg, uint16_t target_index);
+void apply_diffuser(quantum_register_t *reg);//ONLY 2 QUBITS POSSIBLE
+
 void apply_gate_x(quantum_register_t *reg, uint8_t target);
 void apply_gate_h(quantum_register_t *reg, uint8_t target);
 void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target);

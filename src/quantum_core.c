@@ -24,6 +24,25 @@ int16_t random_q14(void) {
   uint32_t val = ((uint32_t)(r >> 48) * (uint32_t)Q14_MAX) >> 16;
   return (int16_t) val;
 }
+
+void apply_oracle(quantum_register_t *reg, uint16_t target_index) {
+  reg->state[target_index].real = -reg->state[target_index].real;
+  reg->state[target_index].imag = -reg->state[target_index].imag;
+}
+
+void apply_diffuser(quantum_register_t *reg) {
+    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
+    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
+
+    // ONLY FOR 2 QUBITS, MIGHT CHANGE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!
+    reg->state[reg->dim - 1].real = -reg->state[reg->dim - 1].real;
+    reg->state[reg->dim - 1].imag = -reg->state[reg->dim - 1].imag;
+
+    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
+    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
+}
+
+
 void apply_gate_x(quantum_register_t *reg, uint8_t target) {
   uint16_t mask = (1u << target);
 

@@ -22,8 +22,11 @@ TARGET_VARIOUS           = $(BIN_DIR)/various
 TARGET_GROVER = $(BIN_DIR)/test_grover
 TARGET_BELL_STATE = $(BIN_DIR)/test_bell_state
 TARGET_TELEPORT = $(BIN_DIR)/test_teleport
+TARGET_GROVER_VISUAL = $(BIN_DIR)/test_grover_visual
 
-all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER) $(TARGET_BELL_STATE) $(TARGET_TELEPORT)
+
+all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER) $(TARGET_BELL_STATE) $(TARGET_TELEPORT) $(TARGET_GROVER_VISUAL)
+
 
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
@@ -58,6 +61,9 @@ $(TARGET_BELL_STATE): $(FULL_OBJS) $(TEST_DIR)/test_bell_state.c | $(BIN_DIR)
 $(TARGET_TELEPORT): $(FULL_OBJS) $(TEST_DIR)/test_teleport.c | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_teleport.c $(FULL_OBJS) -o $@
 
+$(TARGET_GROVER_VISUAL): $(FULL_OBJS) $(TEST_DIR)/test_grover_visual.c | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_grover_visual.c $(FULL_OBJS) -o $@
+
 
 test_math: $(TARGET_MATH)
 	./$(TARGET_MATH)
@@ -86,10 +92,12 @@ test_bell: $(TARGET_BELL_STATE)
 test_teleport: $(TARGET_TELEPORT)
 	./$(TARGET_TELEPORT)
 
+test_grover_visual: $(TARGET_GROVER_VISUAL)
+	./$(TARGET_GROVER_VISUAL)
 
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
 	@echo "Cleaned"
 
-.PHONY: all clean test_math test_quantum test_quantum_extra test_quantum_register test_multiple_qubits test_various
+.PHONY: all clean test_math test_quantum test_quantum_extra test_quantum_register test_multiple_qubits test_various test_grover_visual
