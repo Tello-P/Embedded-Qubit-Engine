@@ -1,4 +1,4 @@
-CC = gcc
+CC = avr-gcc
 CFLAGS = -Wall -Wextra -Werror -O2 -Iincludes
 
 BIN_DIR = bin
