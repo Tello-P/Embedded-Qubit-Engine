@@ -16,10 +16,12 @@ typedef struct {
 void apply_gate_x(quantum_register_t *reg, uint8_t target);
 void apply_gate_h(quantum_register_t *reg, uint8_t target);
 void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target);
+void apply_gate_z(quantum_register_t *reg, uint8_t target);
 
 int measure(qubit_t *q);
 int measure_qubit(quantum_register_t *reg, uint8_t target);
 int16_t random_q14(void);
+void seed_quantum_rng(uint64_t seed);
 
 #endif
 

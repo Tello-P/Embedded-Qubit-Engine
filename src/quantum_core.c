@@ -1,6 +1,11 @@
 #include "quantum_core.h"
 
 
+void seed_quantum_rng(uint64_t seed) {
+    if (seed == 0) seed = 0x853c49e6748fea9bULL;
+    rng_state = seed;
+}
+
 uint64_t rng_state = 0x853c49e6748fea9bULL;//Initial seed for random
 
 // xorshift* 64-bit for random
@@ -16,8 +21,6 @@ static uint64_t next_random_u64(void) {
 #define Q14_MAX 16384
 int16_t random_q14(void) {
   uint64_t r = next_random_u64();
-  
-   
   uint32_t val = ((uint32_t)(r >> 48) * (uint32_t)Q14_MAX) >> 16;
   return (int16_t) val;
 }
@@ -75,6 +78,15 @@ void apply_gate_cnot(quantum_register_t *reg, uint8_t control, uint8_t target) {
   }
 }
 
+void apply_gate_z(quantum_register_t *reg, uint8_t target) {
+    uint16_t mask = (1u << target);
+    for (uint16_t i = 0; i < reg->dim; i++) {
+        if (i & mask) {
+            reg->state[i].real = -reg->state[i].real;
+            reg->state[i].imag = -reg->state[i].imag;
+        }
+    }
+}
 
 int measure(qubit_t *q){
   int16_t alpha_sq = complex_mag_sq(q->alpha);

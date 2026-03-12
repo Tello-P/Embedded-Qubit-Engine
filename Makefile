@@ -1,4 +1,4 @@
-CC = avr-gcc
+CC = gcc
 CFLAGS = -Wall -Wextra -Werror -O2 -Iincludes
 
 BIN_DIR = bin
@@ -21,8 +21,9 @@ TARGET_MULTIPLE_QUBITS   = $(BIN_DIR)/test_multiple_qubits
 TARGET_VARIOUS           = $(BIN_DIR)/various
 TARGET_GROVER = $(BIN_DIR)/test_grover
 TARGET_BELL_STATE = $(BIN_DIR)/test_bell_state
+TARGET_TELEPORT = $(BIN_DIR)/test_teleport
 
-all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER) $(TARGET_BELL_STATE)
+all: $(TARGET_MATH) $(TARGET_QUANTUM) $(TARGET_QUANTUM_EXTRA) $(TARGET_QUANTUM_REGISTER) $(TARGET_MULTIPLE_QUBITS) $(TARGET_VARIOUS) $(TARGET_GROVER) $(TARGET_BELL_STATE) $(TARGET_TELEPORT)
 
 $(BIN_DIR) $(OBJ_DIR):
 	mkdir -p $@
@@ -54,6 +55,10 @@ $(TARGET_GROVER): $(FULL_OBJS) $(TEST_DIR)/test_grover.c | $(BIN_DIR)
 $(TARGET_BELL_STATE): $(FULL_OBJS) $(TEST_DIR)/test_bell_state.c | $(BIN_DIR)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_bell_state.c $(FULL_OBJS) -o $@
 
+$(TARGET_TELEPORT): $(FULL_OBJS) $(TEST_DIR)/test_teleport.c | $(BIN_DIR)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_teleport.c $(FULL_OBJS) -o $@
+
+
 test_math: $(TARGET_MATH)
 	./$(TARGET_MATH)
 
@@ -77,6 +82,11 @@ test_grover: $(TARGET_GROVER)
 
 test_bell: $(TARGET_BELL_STATE)
 	./$(TARGET_BELL_STATE)
+
+test_teleport: $(TARGET_TELEPORT)
+	./$(TARGET_TELEPORT)
+
+
 
 clean:
 	rm -rf $(OBJ_DIR) $(BIN_DIR)
