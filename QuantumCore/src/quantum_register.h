@@ -4,7 +4,7 @@
 #include "fixed_point.h"
 #include <stdint.h>
 
-#define MAX_QUBITS 4
+#define MAX_QUBITS 6
 #define MAX_STATES (1 << MAX_QUBITS)
 
 typedef struct {

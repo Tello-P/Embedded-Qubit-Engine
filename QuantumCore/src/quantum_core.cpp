@@ -30,18 +30,22 @@ void apply_oracle(quantum_register_t *reg, uint16_t target_index) {
   reg->state[target_index].imag = -reg->state[target_index].imag;
 }
 
-void apply_diffuser(quantum_register_t *reg) {
-    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
-    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
-
-    // ONLY FOR 2 QUBITS, MIGHT CHANGE THIS !!!!!!!!!!!!!!!!!!!!!!!!!!
-    reg->state[reg->dim - 1].real = -reg->state[reg->dim - 1].real;
-    reg->state[reg->dim - 1].imag = -reg->state[reg->dim - 1].imag;
-
-    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
-    for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
+// so multiple qubits can be diffused
+void apply_multi_controlled_z(quantum_register_t *reg) {
+  uint16_t last_index = reg->dim - 1;
+  reg->state[last_index].real = -reg->state[last_index].real;
+  reg->state[last_index].imag = -reg->state[last_index].imag;
 }
 
+void apply_diffuser(quantum_register_t *reg) {
+  for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
+  for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
+
+  apply_multi_controlled_z(reg);
+  
+  for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_x(reg, i);
+  for (uint8_t i = 0; i < reg->num_qubits; i++) apply_gate_h(reg, i);
+}
 
 void apply_gate_x(quantum_register_t *reg, uint8_t target) {
   uint16_t mask = (1u << target);
