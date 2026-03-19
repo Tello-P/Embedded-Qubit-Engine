@@ -1,90 +1,110 @@
-# Embedded Quantum Engine (Q1.14 Fixed-Point)
+# Embedded Qubit Engine Sim
+**6-Qubit Quantum Simulation on 8-bit AVR Architecture (Q1.14 Fixed-Point)**
 
-A high-performance, resource-constrained **quantum computing emulator** written in C with (future)hand-optimized AVR assembly routines.  
-Designed specifically for 8-bit microcontrollers (**ATmega328P** / Arduino) that lack a floating-point unit (FPU) and have very limited memory.
+Specialized quantum state-vector simulator designed to run core quantum algorithms on an ATmega328P (Arduino Uno). By tweaking standard floating-point libraries and implementing custom inline AVR Assembly, this engine archieves high-fidelity operations in a highly resource-constrained environment.
 
-## The Mission
+---
 
-Prove that core quantum algorithms — normally requiring supercomputers or cryogenic quantum hardware — can be **simulated on a cheap microcontroller** using fixed-point maths and low-level tricks.
+## Project Milestones
 
-## Core Implementations
+1. **The Core Math** – Developed a custom complex number library using fixed-point arithmetic to avoid the 8-bit FPU bottleneck in the ATmega.
+2. **Hardware Entropy** – Integrated an ADC-based entropy harvester (analogRead(A0)) to seed the quantum RNG with real-world atmospheric noise (in the desktop version is a fixed value).
+3. **AVR-ASM Optimization** – Replaced C math bottlenecks with Inline Assembly for gate applications, reducing latency to microsecond scales.
+4. **Scaling to 6-Qubits** – Storing 64 complex amplitudes ($2^6$ states, arduino only has 2KB SRAM so $2^8$ states is the limit).
+5. **Grover’s Algorithm** – Successfully implemented Amplitude Amplification, achieving 99.33% Fidelity across a 162-gate circuit.
 
-### 1. Fixed-Point Math
+---
 
-Since the ATmega328P has no hardware support for `float` or `double`, the engine uses **fixed-point arithmetic**.
+## Performance Benchmarks (6-Qubit Search)
+Measurements taken on ATmega328P @ 16MHz using Pure Compute Timing (excluding Serial overhead and delays).
 
-- **Format**: **Q1.14**  
-  (1 sign bit + 1 integer bit + 14 fractional bits)
-- **Range**: ≈ [-2, +2)
-- **1.0** is represented by the integer **16384** (2¹⁴)
-- **Complex amplitudes**: `struct { int16_t real; int16_t imag; }`
+| Metric | Result |
+| :--- | :--- |
+| **Total Gates Executed** | 162 Gates |
+| **Pure Compute Time** | 28.40 ms |
+| **Avg Latency per Gate** | 175.30 us |
+| **Algorithm Fidelity** | 99.33% |
+| **Memory Footprint** | 456 / 2048 Bytes (22%) |
+| **System Status** | **OPTIMAL / STABLE** |
+---
 
-**The "magic" multiplication** (with convergent rounding):
+**We could use more qubits but then you have an output of hundreds of lines**
 
-```c
-int32_t product = (int32_t)a * b + 0x2000;  // rounding bias = 2¹³
-int16_t result  = (int16_t)(product >> 14);
+---
+
+## Technical Architecture
+
+### 1. Fixed-Point Math (Q1.14)
+To maintain speed without losing the phase information required for quantum interference, the engine uses a 16-bit signed integer format:
+* **Format**: 1 sign bit + 1 integer bit + 14 fractional bits.
+* **Precision**: $\approx 0.000061$ per amplitude.
+* **Rounding**: Uses a $2^{13}$ bias addition to minimize cumulative error in deep circuits.
+
+### 2. AVR-ASM Optimization
+Standard C multiplication on AVR takes approximately 80 cycles. This project includes hand-optimized Assembly blocks for complex multiplication:
+* Utilizes `muls`, `mul`, and `mulsu` instructions for partial products.
+* Replaces 14 slow shifts with register swaps and 2 shifts, making division by $2^{14}$ nearly instantaneous.
+
+#### Test image (first Q1.14 and then AVR-ASM):
+![AVR asm is faster](media/diferenceUsingGccAndAvr-gcc.png)
+
+---
+
+## Build System and Portability
+
+The project features a dual-build system allowing for cross-platform development and bare-metal deployment.
+
+### 1. Desktop Mode (Root Makefile)
+The root directory contains a Makefile for desktop environments (Only tested in Linux but should work anywhere). This build uses a C fallback for the assembly routines (not supported in desktop CPUs), allowing for rapid testing, unit verification, and high-speed simulations.
+* **Use case**: Running the extensive test suite in the `tests/` directory.
+* **Command**: `make test_grover` or `make test_bell`.
+
+### 2. Arduino Mode (QuantumCore Makefile)
+Inside the `QuantumCore/` directory, a second Makefile manages the deployment to AVR hardware via `arduino-cli`. This version enables the inline assembly optimizations and hardware-specific features like ADC noise harvesting.
+* **Use case**: Deploying to an actual Arduino Uno for hardware verification.
+* **Command**: `cd QuantumCore && make compile && make upload && make monitor`.
+
+---
+
+## Repository Structure
+
+```text
+.
+├── includes/              # Header files for desktop/C builds
+├── media/                 # Execution traces and performance screenshots
+├── QuantumCore/           # Arduino-specific project directory
+│   ├── src/               # Optimized source with AVR Assembly
+│   ├── Makefile           # Build system for arduino-cli
+│   └── QuantumCore.ino    # Main firmware entry point
+├── src/                   # C implementation for desktop builds
+├── tests/                 # Comprehensive test suite (Bell, Teleport, Grover)
+├── LICENSE
+└── Makefile               # Root Makefile for desktop simulation
 ```
 
-This simple bias addition dramatically reduces cumulative rounding error in long gate sequences but is not enough for deep circuits because error might grow after 40–50 gates
+---
 
-### 2. State Vector Representation
+## Final Execution Report
+```text
+=========================================
+       RAW PERFORMANCE REPORT            
+=========================================
+Total Gates Executed:  162
+Pure Compute Time:     28.42 ms
+Avg Time Per Gate:     175.43 us
+Algorithm Fidelity:    99.33%
+Memory Usage (SRAM):   456 / 2048 bytes
+System Status:         [OPTIMAL]
+=========================================
+```
 
-A register of *n* qubits → state vector of **2ⁿ complex amplitudes**.
+## Test video(arduino)
 
-- **Memory usage** (3 qubits): 8 states × 4 bytes = **32 bytes** of RAM
-- **Practical limit**: up to **4–5 qubits** on a classic Arduino Uno (2 KB SRAM)
+https://github.com/user-attachments/assets/535a957f-b07c-45db-b69a-29ea07d3a96a
 
-## Hardware Optimization – 50× Speedup
 
-Standard C 16×16-bit multiplication on AVR is slow (70–100 cycles).  
-This project includes an **AVR assembly block** for the core fixed-point multiply:
 
-- Uses `muls`, `mul`, `mulsu` instructions for partial products
-- Register swaps + only **2 left shifts** insted of 14 slow shifts → division by 2¹⁴ is almost free
-- **Result**: Bell-state creation benchmark dropped from **~300 ms → 6 ms** (**50× faster**)
-
-## Quantum Gate Library
-
-| Gate       | Symbol | Matrix                              | Purpose                              |
-|------------|--------|-------------------------------------|--------------------------------------|
-| Hadamard   | H      | 1/√2 [[1,1],[1,-1]]                | Creates superposition                |
-| Pauli-X    | X      | [[0,1],[1,0]]                       | Quantum NOT (bit flip)               |
-| Pauli-Z    | Z      | [[1,0],[0,-1]]                      | Phase flip (sign change on |1⟩)     |
-| CNOT       | CX     | Controlled-X                        | Creates entanglement                 |
-
-##  Algorithms & Tests Passed
-
-1. **Bell State (Entanglement)**  
-   H on qubit 0 → CNOT(0→1)  
-   → State: `(|00⟩ + |11⟩)/√2`  
-   Measurement of one qubit instantly collapses the other → perfect correlation demonstrated.
-
-2. **Quantum Teleportation**  
-   Transfer state of qubit 0 to qubit 2 using entangled pair (q1–q2) + classical bits.  
-   Fidelity: **> 99%** in fixed-point arithmetic.
-
-3. **Grover’s Search** (quadratic speedup demo)  
-   - Database: 4 items (2 qubits)  
-   - Marked state: e.g. |11⟩  
-   - Classical: ~2.25 queries in expectation  
-   - Quantum: **1 iteration** → 99–100% probability on target
-
-## Error Log Overcome
-
-- **Deterministic RNG trap**  
-  → Xorshift always gave same measurement outcome  
-  → Fixed by seeding with `analogRead(0)` (floating ADC noise)
-
-- **Grover diffuser bug**  
-  → Originally amplified |00⟩ instead of target  
-  → Corrected multi-controlled phase logic (H–X–phase–X–H sequence)
-
-- **Assembly portability**  
-  → AVR asm broke PC builds  
-  → Solved with `#ifdef __AVR__` → dual-mode codebase (ASM on MCU, C fallback on x86/ARM)
-
-## 🖥 How to Run
+## Other tests
 
 ```bash
 # Build & run Bell state (entanglement) test
@@ -97,11 +117,3 @@ make test_bell
 make test_grover n=7
 ```
 ![Grover Search](media/quantumGroverTest.png)
-
-## Key Accomplishments
-
-- Portable C quantum simulation library
-- Inline AVR assembly for critical performance path
-- From-scratch fixed-point complex arithmetic
-- Successful simulation of entanglement, teleportation, and amplitude amplification
-- Ran genuine quantum-inspired algorithms on hardware **never designed for quantum physics**
