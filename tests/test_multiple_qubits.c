@@ -1,41 +1,27 @@
 #include <stdio.h>
 #include "quantum_register.h"
 #include "quantum_core.h"
+#include "test_common.h"
 
-void apply_gate_to_reg(quantum_register_t *reg, uint8_t target, void (*gate)(qubit_t*)) {
-    uint16_t stride = 1 << target;
-    for (uint16_t i = 0; i < reg->dim; i++) {
-        if (!(i & stride)) {
-            qubit_t q = {reg->state[i], reg->state[i | stride]};
-            gate(&q);
-            reg->state[i] = q.alpha;
-            reg->state[i | stride] = q.beta;
+/* Superposicion y GHZ con todos los qubits que admite la compilacion (MAX_QUBITS). */
+int main(void) {
+    for (uint8_t n = 1; n <= MAX_QUBITS; n++) {
+        quantum_register_t reg = init_register(n);
+        for (uint8_t q = 0; q < n; q++) apply_gate_h(&reg, q);
+        assert_norm(&reg);
+        for (uint16_t i = 0; i < reg.dim; i++)
+            CHECK(abs((int)(reg_prob(&reg, i) * reg.dim * 1000) - 1000) < 30,
+                  "n=%u: P(%u) = %.5f, esperada %.5f", n, i, reg_prob(&reg, i), 1.0 / reg.dim);
+
+        reg = init_register(n);
+        apply_gate_h(&reg, 0);
+        for (uint8_t q = 1; q < n; q++) apply_gate_cnot(&reg, 0, q);
+        assert_norm(&reg);
+        if (n > 1) {
+            CHECK(reg_prob(&reg, 0) > 0.49 && reg_prob(&reg, 0) < 0.51, "GHZ n=%u: P(0..0)", n);
+            CHECK(reg_prob(&reg, reg.dim - 1) > 0.49 && reg_prob(&reg, reg.dim - 1) < 0.51, "GHZ n=%u: P(1..1)", n);
         }
     }
-}
-
-void print_bell_state(quantum_register_t *reg) {
-    printf("Estado del Registro:\n");
-    for (uint16_t i = 0; i < reg->dim; i++) {
-        int p = (complex_mag_sq(reg->state[i]) * 100) / Q14_ONE;
-        if (p > 0) {
-            printf("  |%d%d⟩: Prob %d%%\n", (i >> 1) & 1, i & 1, p);
-        }
-    }
-}
-
-int main() {
-    printf("=== Generando Estado de Bell |\u03A6+> ===\n");
-    quantum_register_t reg = init_register(2);
-
-    printf("1. Aplicando Hadamard al Qubit 0...\n");
-    apply_gate_to_reg(&reg, 0, apply_gate_h);
-
-    printf("2. Aplicando CNOT (Control: 0, Target: 1)...\n");
-    apply_gate_cnot(&reg, 0, 1);
-
-    print_bell_state(&reg);
-
-    printf("\nResultado esperado: 50%% en |00> y 50%% en |11>\n");
+    printf("test_multiple_qubits: OK (hasta %d qubits)\n", MAX_QUBITS);
     return 0;
 }
