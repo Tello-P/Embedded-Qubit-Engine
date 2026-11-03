@@ -1,66 +1,24 @@
 #include <stdio.h>
-#include <stdint.h>
 #include "quantum_register.h"
-#include "fixed_point.h"
-#include "quantum_core.h"
-
-void print_complex_q14(const complex_q14_t *c) {
-    float re = (float)c->real / 16384.0f;
-    float im = (float)c->imag / 16384.0f;
-
-    if (c->real == Q14_ONE && c->imag == 0) {
-        printf(" 1.000 + 0.000j");
-    } else if (c->real == 0 && c->imag == 0) {
-        printf(" 0.000 + 0.000j");
-    } else {
-        printf("%+6.3f %+6.3fi", re, im);
-    }
-}
-
-void print_register(const quantum_register_t *reg) {
-    if (reg->dim == 0 || reg->state == NULL) {
-        printf("Register is invalid or exceeds static bounds\n");
-        return;
-    }
-
-    printf("Register: %d qubits, %u basis states\n", reg->num_qubits, reg->dim);
-    printf("--------------------------------------------------\n");
-
-    for (uint16_t i = 0; i < reg->dim; i++) {
-        printf("|");
-        for (int b = reg->num_qubits - 1; b >= 0; b--) {
-            putchar((i & (1u << b)) ? '1' : '0');
-        }
-        printf("⟩  ");
-
-        print_complex_q14(&reg->state[i]);
-
-        int16_t mag2 = complex_mag_sq(reg->state[i]);
-        printf("    |amp|^2 = %5d / 16384\n", mag2);
-    }
-    printf("\n");
-}
+#include "test_common.h"
 
 int main(void) {
-    
-    printf("=== Single qubit test ===\n");
-    quantum_register_t r1 = init_register(1);
-    print_register(&r1);
-
-    printf("=== Two qubit test ===\n");
-    quantum_register_t r2 = init_register(2);
-    print_register(&r2);
-
-    printf("=== Three qubit test ===\n");
-    quantum_register_t r3 = init_register(3);
-    print_register(&r3);
-
-    printf("=== Invalid cases (Should fail gracefully) ===\n");
+    for (uint8_t n = 1; n <= MAX_QUBITS; n++) {
+        quantum_register_t r = init_register(n);
+        CHECK(r.num_qubits == n && r.dim == (1u << n), "n=%u dim=%u", n, r.dim);
+        CHECK(r.state != NULL, "estado nulo");
+        CHECK(r.state[0].real == Q14_ONE && r.state[0].imag == 0, "|0..0> debe valer 1");
+        for (uint16_t i = 1; i < r.dim; i++)
+            CHECK(r.state[i].real == 0 && r.state[i].imag == 0, "indice %u debe ser 0", i);
+        assert_norm(&r);
+    }
+    /* casos invalidos: deben devolver un registro vacio, no uno parcial */
     quantum_register_t bad = init_register(0);
-    print_register(&bad);
-
+    CHECK(bad.dim == 0 && bad.state == NULL, "n=0 debe ser invalido");
+    bad = init_register(MAX_QUBITS + 1);
+    CHECK(bad.dim == 0 && bad.state == NULL, "n=MAX+1 debe ser invalido");
     bad = init_register(10);
-    print_register(&bad);
-
+    CHECK(bad.dim == 0 && bad.state == NULL, "n=10 debe ser invalido");
+    printf("test_quantum_register: OK\n");
     return 0;
 }
