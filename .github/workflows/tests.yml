@@ -1,0 +1,28 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar dependencias
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential gcc-avr avr-libc
+          python3 -m pip install numpy pytest
+
+      - name: Tests (C + pytest, escritorio y copia C++ del firmware)
+        run: make test
+
+      - name: El firmware AVR compila
+        run: |
+          set -e
+          for f in QuantumCore/src/*.cpp; do
+            echo "avr-g++ $f"
+            avr-g++ -mmcu=atmega328p -DF_CPU=16000000UL -Os -Wall -Wextra -IQuantumCore/src -c "$f" -o /dev/null
+          done
