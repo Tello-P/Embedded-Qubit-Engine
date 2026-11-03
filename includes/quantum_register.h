@@ -4,7 +4,9 @@
 #include "fixed_point.h"
 #include <stdint.h>
 
-#define MAX_QUBITS 4
+#ifndef MAX_QUBITS
+#define MAX_QUBITS 4   /* sobreescribible con -DMAX_QUBITS=6 (el firmware AVR usa 6) */
+#endif
 #define MAX_STATES (1 << MAX_QUBITS)
 
 typedef struct {
