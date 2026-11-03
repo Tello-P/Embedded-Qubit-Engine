@@ -131,6 +131,18 @@ int measure(qubit_t *q){
 }
 
 
+// floor(sqrt(x)) by bit-by-bit method (no FPU/divisions, fine for AVR)
+static uint16_t isqrt_u32(uint32_t x) {
+  uint32_t res = 0, bit = 1UL << 30;
+  while (bit > x) bit >>= 2;
+  while (bit) {
+    if (x >= res + bit) { x -= res + bit; res = (res >> 1) + bit; }
+    else res >>= 1;
+    bit >>= 2;
+  }
+  return (uint16_t)res;
+}
+
 int measure_qubit(quantum_register_t *reg, uint8_t target) {
   uint16_t mask = (1u << target);
   int32_t prob1_q14 = 0;
@@ -144,24 +156,27 @@ int measure_qubit(quantum_register_t *reg, uint8_t target) {
   int16_t r = random_q14();
   int result = (r < (int16_t)prob1_q14) ? 1 : 0;
 
-  int32_t sum_sq = 0;
+  uint32_t sum_sq = 0; // Q28: sum of re^2+im^2 (no truncation)
   for (uint16_t i = 0; i < reg->dim; i++) {
     int bit = (i & mask) ? 1 : 0;
     if (bit != result) {
       reg->state[i].real = 0;
       reg->state[i].imag = 0;
     } else {
-      sum_sq += complex_mag_sq(reg->state[i]);
+      sum_sq += (uint32_t)((int32_t)reg->state[i].real * reg->state[i].real)
+              + (uint32_t)((int32_t)reg->state[i].imag * reg->state[i].imag);
     }
   }
 
-  if (sum_sq > 0) {
+  // norm of the kept amplitudes in Q14 = sqrt(sum_sq in Q28)
+  uint16_t root_sum = isqrt_u32(sum_sq);
+  if (root_sum > 0) {
     for (uint16_t i = 0; i < reg->dim; i++) {
       if (reg->state[i].real != 0 || reg->state[i].imag != 0) {
         int32_t r_ext = (int32_t)reg->state[i].real << 14;
         int32_t i_ext = (int32_t)reg->state[i].imag << 14;
-        int16_t root_sum = 11585; // Simplification
-        // 1/sqrt(sum_sq) is needed if i have != 90º logic gates
+        // divide by the real norm so the state stays normalized (it used to
+        // assume the outcome had probability 1/2, i.e. a constant 11585)
         reg->state[i].real = (int16_t)(r_ext / root_sum);
         reg->state[i].imag = (int16_t)(i_ext / root_sum);
       }
